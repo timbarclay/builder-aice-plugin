@@ -16,7 +16,7 @@ export default {
   input: `src/${libraryName}.tsx`,
   // Important! We need to have shared references to 'react' and '@builder.io/sdk'
   // for builder plugins to run properly
-  external: ['react', '@builder.io/sdk', '@material-ui/core', '@emotion/core', '@emotion/styled'],
+  external: ['react', '@builder.io/sdk', '@material-ui/core', '@emotion/core', '@emotion/styled', '@builder.io/app-context'],
   output: [
     {
       file: pkg.main,
