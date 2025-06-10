@@ -1,4 +1,4 @@
-# Builder.io Learnosity Plugin
+# Builder.io AICE Generator Plugin
 
 This is entirely cribbed from https://github.com/BuilderIO/builder/tree/main/plugins/cloudinary and probably not fit for purpose, let alone production use.
 
@@ -6,7 +6,7 @@ This is entirely cribbed from https://github.com/BuilderIO/builder/tree/main/plu
 
     npm run start
 
-In builder, add `http://localhost:1268/plugin-learnosity.system.js` as a plugin.
+In builder, add `http://localhost:1268/plugin-ai-generator.system.js` as a plugin.
 
 ## Deploy
 
@@ -19,4 +19,4 @@ To deploy a new version
     git commit -m "<message>"
     git push
 
-In builder, add a cdn URL for the `plugin-learnosity.system.js` file, e.g. `https://cdn.jsdelivr.net/gh/timbarclay/builder-learnosity-plugin/dist/plugin-learnosity.system.js?pluginId=plugin-learnosity`.
+In builder, add a cdn URL for the `plugin-ai-generator.system.js` file, e.g. `https://cdn.jsdelivr.net/gh/timbarclay/builder-ai-generator-plugin/dist/plugin-ai-generator.system.js?pluginId=plugin-ai-generator`.

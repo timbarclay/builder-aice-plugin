@@ -1,12 +1,12 @@
 {
-  "name": "plugin-learnosity",
+  "name": "plugin-ai-generator",
   "version": "0.0.1",
   "description": "",
   "keywords": [],
-  "main": "dist/plugin-learnosity.system.js",
-  "module": "dist/plugin-learnosity.es5.js",
-  "unpkg": "dist/plugin-learnosity.system.js",
-  "typings": "dist/types/plugin-learnosity.d.ts",
+  "main": "dist/plugin-ai-generator.umd.js",
+  "module": "dist/plugin-ai-generator.es5.js",
+  "unpkg": "dist/plugin-ai-generator.system.js",
+  "typings": "dist/types/plugin-ai-generator.d.ts",
   "files": [
     "dist"
   ],
@@ -98,7 +98,7 @@
     "tslint-config-prettier": "^1.15.0",
     "tslint-config-standard": "^8.0.1",
     "typedoc": "^0.12.0",
-    "typescript": "^3.0.3"
+    "typescript": "^4.9.5"
   },
   "dependencies": {
     "@builder.io/sdk": "^1.1.29",

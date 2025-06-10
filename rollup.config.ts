@@ -10,7 +10,7 @@ const SERVE = process.env.SERVE === 'true';
 
 const pkg = require('./package.json');
 
-const libraryName = 'LearnosityEditor';
+const libraryName = 'AiGenerator';
 
 export default {
   input: `src/${libraryName}.tsx`,
