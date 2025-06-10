@@ -6,6 +6,7 @@ import GeneratorForm from './GeneratorForm';
 import Preview from './Preview';
 import { AiceApi } from './api/aiceApi';
 import { getS3Object } from './api/resultBucketApi';
+import { ApplicationContext } from './interfaces/application-context';
 
 interface GeneratorPaneProps {
   lessonData: Map<string, any>
@@ -13,6 +14,7 @@ interface GeneratorPaneProps {
   clientSecret: string | null
   awsAccessKeyId: string | null
   awsSecretAccessKey: string | null
+  context: ApplicationContext
 }
 
 export interface EngineParameters {
@@ -31,7 +33,12 @@ interface GeneratedContent {
   }>
 }
 
-export default function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, awsSecretAccessKey }: GeneratorPaneProps) {
+export default function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, awsSecretAccessKey, context }: GeneratorPaneProps) {
+  const userId = context.user.id
+  const contentId = context.designerState?.editingContentModel?.id
+  const userContentId = `${userId}-${contentId}`
+  const settings = context.user.organization.value.settings.plugins;
+  
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStatus, setGenerationStatus] = useState<string>('');
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
@@ -40,25 +47,6 @@ export default function GeneratorPane({ lessonData, clientId, clientSecret, awsA
   
   const pollingIntervalRef = useRef<number | null>(null);
   const apiRef = useRef<AiceApi | null>(null);
-
-  // Cleanup polling on unmount
-  useEffect(() => {
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-      }
-    };
-  }, []);
-
-  const stopGeneration = () => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
-    }
-    setIsGenerating(false);
-    setGenerationStatus('Generation cancelled');
-    setCurrentGenerationId(null);
-  };
 
   const startPolling = (api: AiceApi, generationId: string) => {
     setCurrentGenerationId(generationId);
@@ -108,6 +96,51 @@ export default function GeneratorPane({ lessonData, clientId, clientSecret, awsA
     pollStatus();
     pollingIntervalRef.current = window.setInterval(pollStatus, 10000);
   };
+
+  const stopGeneration = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    setIsGenerating(false);
+    setGenerationStatus('Generation cancelled');
+    setCurrentGenerationId(null);
+  };
+
+  // Initialize from stored state and start polling if needed
+  useEffect(() => {
+    const storedGenerationId = settings.get(userContentId);
+    if (storedGenerationId && clientId && clientSecret && awsAccessKeyId && awsSecretAccessKey) {
+      setCurrentGenerationId(storedGenerationId);
+      setIsGenerating(true);
+      setGenerationStatus('Resuming previous generation...');
+      
+      const api = new AiceApi(clientId, clientSecret);
+      apiRef.current = api;
+      startPolling(api, storedGenerationId);
+    }
+  }, [userContentId, clientId, clientSecret, awsAccessKeyId, awsSecretAccessKey]);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
+
+  // Persist currentGenerationId changes
+  useEffect(() => {
+    if (currentGenerationId) {
+      settings.set(userContentId, currentGenerationId);
+      context.user.organization.save();
+    } else {
+      // Clear the stored generation ID when null
+      settings.delete(userContentId);
+      context.user.organization.save();
+    }
+  }, [currentGenerationId, userContentId]);
 
   const onGenerate = async (parameters: EngineParameters) => {
     if (!clientId || !clientSecret || !awsAccessKeyId || !awsSecretAccessKey) {

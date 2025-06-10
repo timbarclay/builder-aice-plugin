@@ -23,12 +23,20 @@ async function hmac(key: ArrayBuffer | string, message: string): Promise<ArrayBu
   return await crypto.subtle.sign('HMAC', cryptoKey, msgBuffer);
 }
 
-export async function getS3Object(accessKeyId: string, secretAccessKey: string, s3Url: string) {
-  const url = new URL(s3Url);
-  const bucket = url.hostname.split('.')[0];
-  const key = url.pathname.slice(1); // Remove leading /
+export async function getS3Object(accessKeyId: string, secretAccessKey: string, s3Uri: string) {
+  // Convert s3://bucket/key to https://bucket.s3.region.amazonaws.com/key
+  const match = s3Uri.match(/^s3:\/\/([^\/]+)\/(.+)$/);
+  if (!match) {
+    throw new Error(`Invalid S3 URI format: ${s3Uri}`);
+  }
   
+  const bucket = match[1];
+  const key = match[2];
   const region = 'us-east-1';
+  const httpsUrl = `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+  
+  const url = new URL(httpsUrl);
+  
   const service = 's3';
   const now = new Date();
   const isoDate = now.toISOString().replace(/[:\-]|\.\d{3}/g, '');
@@ -72,7 +80,7 @@ export async function getS3Object(accessKeyId: string, secretAccessKey: string, 
   const authorization = `${algorithm} Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
   
   // Make the request
-  const response = await fetch(s3Url, {
+  const response = await fetch(httpsUrl, {
     headers: {
       'Authorization': authorization,
       'x-amz-date': isoDate

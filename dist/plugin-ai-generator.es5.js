@@ -173,12 +173,18 @@ function hmac(key, message) {
         return yield crypto.subtle.sign('HMAC', cryptoKey, msgBuffer);
     });
 }
-function getS3Object(accessKeyId, secretAccessKey, s3Url) {
+function getS3Object(accessKeyId, secretAccessKey, s3Uri) {
     return __awaiter(this, void 0, void 0, function* () {
-        const url = new URL(s3Url);
-        url.hostname.split('.')[0];
-        const key = url.pathname.slice(1); // Remove leading /
+        // Convert s3://bucket/key to https://bucket.s3.region.amazonaws.com/key
+        const match = s3Uri.match(/^s3:\/\/([^\/]+)\/(.+)$/);
+        if (!match) {
+            throw new Error(`Invalid S3 URI format: ${s3Uri}`);
+        }
+        const bucket = match[1];
+        const key = match[2];
         const region = 'us-east-1';
+        const httpsUrl = `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+        const url = new URL(httpsUrl);
         const service = 's3';
         const now = new Date();
         const isoDate = now.toISOString().replace(/[:\-]|\.\d{3}/g, '');
@@ -216,7 +222,7 @@ function getS3Object(accessKeyId, secretAccessKey, s3Url) {
         // Create authorization header
         const authorization = `${algorithm} Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
         // Make the request
-        const response = yield fetch(s3Url, {
+        const response = yield fetch(httpsUrl, {
             headers: {
                 'Authorization': authorization,
                 'x-amz-date': isoDate
@@ -230,7 +236,12 @@ function getS3Object(accessKeyId, secretAccessKey, s3Url) {
     });
 }
 
-function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, awsSecretAccessKey }) {
+function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, awsSecretAccessKey, context }) {
+    var _a, _b;
+    const userId = context.user.id;
+    const contentId = (_b = (_a = context.designerState) === null || _a === void 0 ? void 0 : _a.editingContentModel) === null || _b === void 0 ? void 0 : _b.id;
+    const userContentId = `${userId}-${contentId}`;
+    const settings = context.user.organization.value.settings.plugins;
     const [isGenerating, setIsGenerating] = useState(false);
     const [generationStatus, setGenerationStatus] = useState('');
     const [generatedContent, setGeneratedContent] = useState(null);
@@ -238,23 +249,6 @@ function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, aws
     const [currentGenerationId, setCurrentGenerationId] = useState(null);
     const pollingIntervalRef = useRef(null);
     const apiRef = useRef(null);
-    // Cleanup polling on unmount
-    useEffect(() => {
-        return () => {
-            if (pollingIntervalRef.current) {
-                clearInterval(pollingIntervalRef.current);
-            }
-        };
-    }, []);
-    const stopGeneration = () => {
-        if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-            pollingIntervalRef.current = null;
-        }
-        setIsGenerating(false);
-        setGenerationStatus('Generation cancelled');
-        setCurrentGenerationId(null);
-    };
     const startPolling = (api, generationId) => {
         setCurrentGenerationId(generationId);
         const pollStatus = () => __awaiter(this, void 0, void 0, function* () {
@@ -299,6 +293,47 @@ function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, aws
         pollStatus();
         pollingIntervalRef.current = window.setInterval(pollStatus, 10000);
     };
+    const stopGeneration = () => {
+        if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+        }
+        setIsGenerating(false);
+        setGenerationStatus('Generation cancelled');
+        setCurrentGenerationId(null);
+    };
+    // Initialize from stored state and start polling if needed
+    useEffect(() => {
+        const storedGenerationId = settings.get(userContentId);
+        if (storedGenerationId && clientId && clientSecret && awsAccessKeyId && awsSecretAccessKey) {
+            setCurrentGenerationId(storedGenerationId);
+            setIsGenerating(true);
+            setGenerationStatus('Resuming previous generation...');
+            const api = new AiceApi(clientId, clientSecret);
+            apiRef.current = api;
+            startPolling(api, storedGenerationId);
+        }
+    }, [userContentId, clientId, clientSecret, awsAccessKeyId, awsSecretAccessKey]);
+    // Cleanup polling on unmount
+    useEffect(() => {
+        return () => {
+            if (pollingIntervalRef.current) {
+                clearInterval(pollingIntervalRef.current);
+            }
+        };
+    }, []);
+    // Persist currentGenerationId changes
+    useEffect(() => {
+        if (currentGenerationId) {
+            settings.set(userContentId, currentGenerationId);
+            context.user.organization.save();
+        }
+        else {
+            // Clear the stored generation ID when null
+            settings.delete(userContentId);
+            context.user.organization.save();
+        }
+    }, [currentGenerationId, userContentId]);
     const onGenerate = (parameters) => __awaiter(this, void 0, void 0, function* () {
         if (!clientId || !clientSecret || !awsAccessKeyId || !awsSecretAccessKey) {
             setError('Missing credentials');
@@ -367,7 +402,6 @@ function AiGenerator({ context }) {
         awsAccessKeyId: awsAccessKeyId || '',
         awsSecretAccessKey: awsSecretAccessKey || ''
     });
-    //const organisation = context.user.organization;
     const type = (_b = (_a = context.designerState) === null || _a === void 0 ? void 0 : _a.editingModel) === null || _b === void 0 ? void 0 : _b.name;
     if (type !== 'lesson') {
         return jsx("div", { css: { padding: 16, height: '100vh' } },
@@ -398,7 +432,8 @@ function AiGenerator({ context }) {
                 "Use AICE to generate lesson resources for ",
                 model),
             jsx(Button, { variant: "outlined", onClick: () => setModalOpen(true) }, "Set Credentials")),
-        !requiresCredentials && jsx(GeneratorPane, { lessonData: lessonData, clientId: clientId, clientSecret: clientSecret, awsAccessKeyId: awsAccessKeyId, awsSecretAccessKey: awsSecretAccessKey }),
+        !requiresCredentials &&
+            jsx(GeneratorPane, { lessonData: lessonData, clientId: clientId, clientSecret: clientSecret, awsAccessKeyId: awsAccessKeyId, awsSecretAccessKey: awsSecretAccessKey, context: context }),
         jsx(Dialog, { open: modalOpen, onClose: () => setModalOpen(false), maxWidth: "sm", fullWidth: true },
             jsx(DialogTitle, null, "Set AI Credentials"),
             jsx(DialogContent, { css: { paddingTop: 20 } },

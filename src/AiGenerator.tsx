@@ -23,10 +23,7 @@ export default function AiGenerator({context}: {context: ApplicationContext}) {
     awsAccessKeyId: awsAccessKeyId || '',
     awsSecretAccessKey: awsSecretAccessKey || ''
   });
-
   
-  
-  //const organisation = context.user.organization;
   const type = context.designerState?.editingModel?.name
 
   if (type !== 'lesson') {
@@ -75,7 +72,15 @@ export default function AiGenerator({context}: {context: ApplicationContext}) {
           Set Credentials
         </Button>
       </div>
-      {!requiresCredentials && <GeneratorPane lessonData={lessonData} clientId={clientId} clientSecret={clientSecret} awsAccessKeyId={awsAccessKeyId} awsSecretAccessKey={awsSecretAccessKey} />}
+      {!requiresCredentials &&
+        <GeneratorPane
+          lessonData={lessonData}
+          clientId={clientId} 
+          clientSecret={clientSecret} 
+          awsAccessKeyId={awsAccessKeyId} 
+          awsSecretAccessKey={awsSecretAccessKey}
+          context={context}
+        />}
       
       <Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Set AI Credentials</DialogTitle>

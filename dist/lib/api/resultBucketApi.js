@@ -30,12 +30,18 @@ function hmac(key, message) {
         return yield crypto.subtle.sign('HMAC', cryptoKey, msgBuffer);
     });
 }
-function getS3Object(accessKeyId, secretAccessKey, s3Url) {
+function getS3Object(accessKeyId, secretAccessKey, s3Uri) {
     return __awaiter(this, void 0, void 0, function* () {
-        const url = new URL(s3Url);
-        const bucket = url.hostname.split('.')[0];
-        const key = url.pathname.slice(1); // Remove leading /
+        // Convert s3://bucket/key to https://bucket.s3.region.amazonaws.com/key
+        const match = s3Uri.match(/^s3:\/\/([^\/]+)\/(.+)$/);
+        if (!match) {
+            throw new Error(`Invalid S3 URI format: ${s3Uri}`);
+        }
+        const bucket = match[1];
+        const key = match[2];
         const region = 'us-east-1';
+        const httpsUrl = `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+        const url = new URL(httpsUrl);
         const service = 's3';
         const now = new Date();
         const isoDate = now.toISOString().replace(/[:\-]|\.\d{3}/g, '');
@@ -73,7 +79,7 @@ function getS3Object(accessKeyId, secretAccessKey, s3Url) {
         // Create authorization header
         const authorization = `${algorithm} Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
         // Make the request
-        const response = yield fetch(s3Url, {
+        const response = yield fetch(httpsUrl, {
             headers: {
                 'Authorization': authorization,
                 'x-amz-date': isoDate

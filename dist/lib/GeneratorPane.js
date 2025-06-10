@@ -20,7 +20,12 @@ const GeneratorForm_1 = __importDefault(require("./GeneratorForm"));
 const Preview_1 = __importDefault(require("./Preview"));
 const aiceApi_1 = require("./api/aiceApi");
 const resultBucketApi_1 = require("./api/resultBucketApi");
-function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, awsSecretAccessKey }) {
+function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, awsSecretAccessKey, context }) {
+    var _a, _b;
+    const userId = context.user.id;
+    const contentId = (_b = (_a = context.designerState) === null || _a === void 0 ? void 0 : _a.editingContentModel) === null || _b === void 0 ? void 0 : _b.id;
+    const userContentId = `${userId}-${contentId}`;
+    const settings = context.user.organization.value.settings.plugins;
     const [isGenerating, setIsGenerating] = (0, react_1.useState)(false);
     const [generationStatus, setGenerationStatus] = (0, react_1.useState)('');
     const [generatedContent, setGeneratedContent] = (0, react_1.useState)(null);
@@ -28,23 +33,6 @@ function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, aws
     const [currentGenerationId, setCurrentGenerationId] = (0, react_1.useState)(null);
     const pollingIntervalRef = (0, react_1.useRef)(null);
     const apiRef = (0, react_1.useRef)(null);
-    // Cleanup polling on unmount
-    (0, react_1.useEffect)(() => {
-        return () => {
-            if (pollingIntervalRef.current) {
-                clearInterval(pollingIntervalRef.current);
-            }
-        };
-    }, []);
-    const stopGeneration = () => {
-        if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-            pollingIntervalRef.current = null;
-        }
-        setIsGenerating(false);
-        setGenerationStatus('Generation cancelled');
-        setCurrentGenerationId(null);
-    };
     const startPolling = (api, generationId) => {
         setCurrentGenerationId(generationId);
         const pollStatus = () => __awaiter(this, void 0, void 0, function* () {
@@ -89,6 +77,47 @@ function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, aws
         pollStatus();
         pollingIntervalRef.current = window.setInterval(pollStatus, 10000);
     };
+    const stopGeneration = () => {
+        if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+        }
+        setIsGenerating(false);
+        setGenerationStatus('Generation cancelled');
+        setCurrentGenerationId(null);
+    };
+    // Initialize from stored state and start polling if needed
+    (0, react_1.useEffect)(() => {
+        const storedGenerationId = settings.get(userContentId);
+        if (storedGenerationId && clientId && clientSecret && awsAccessKeyId && awsSecretAccessKey) {
+            setCurrentGenerationId(storedGenerationId);
+            setIsGenerating(true);
+            setGenerationStatus('Resuming previous generation...');
+            const api = new aiceApi_1.AiceApi(clientId, clientSecret);
+            apiRef.current = api;
+            startPolling(api, storedGenerationId);
+        }
+    }, [userContentId, clientId, clientSecret, awsAccessKeyId, awsSecretAccessKey]);
+    // Cleanup polling on unmount
+    (0, react_1.useEffect)(() => {
+        return () => {
+            if (pollingIntervalRef.current) {
+                clearInterval(pollingIntervalRef.current);
+            }
+        };
+    }, []);
+    // Persist currentGenerationId changes
+    (0, react_1.useEffect)(() => {
+        if (currentGenerationId) {
+            settings.set(userContentId, currentGenerationId);
+            context.user.organization.save();
+        }
+        else {
+            // Clear the stored generation ID when null
+            settings.delete(userContentId);
+            context.user.organization.save();
+        }
+    }, [currentGenerationId, userContentId]);
     const onGenerate = (parameters) => __awaiter(this, void 0, void 0, function* () {
         if (!clientId || !clientSecret || !awsAccessKeyId || !awsSecretAccessKey) {
             setError('Missing credentials');

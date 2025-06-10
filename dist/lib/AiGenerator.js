@@ -25,7 +25,6 @@ function AiGenerator({ context }) {
         awsAccessKeyId: awsAccessKeyId || '',
         awsSecretAccessKey: awsSecretAccessKey || ''
     });
-    //const organisation = context.user.organization;
     const type = (_b = (_a = context.designerState) === null || _a === void 0 ? void 0 : _a.editingModel) === null || _b === void 0 ? void 0 : _b.name;
     if (type !== 'lesson') {
         return (0, core_1.jsx)("div", { css: { padding: 16, height: '100vh' } },
@@ -56,7 +55,8 @@ function AiGenerator({ context }) {
                 "Use AICE to generate lesson resources for ",
                 model),
             (0, core_1.jsx)(core_2.Button, { variant: "outlined", onClick: () => setModalOpen(true) }, "Set Credentials")),
-        !requiresCredentials && (0, core_1.jsx)(GeneratorPane_1.default, { lessonData: lessonData, clientId: clientId, clientSecret: clientSecret, awsAccessKeyId: awsAccessKeyId, awsSecretAccessKey: awsSecretAccessKey }),
+        !requiresCredentials &&
+            (0, core_1.jsx)(GeneratorPane_1.default, { lessonData: lessonData, clientId: clientId, clientSecret: clientSecret, awsAccessKeyId: awsAccessKeyId, awsSecretAccessKey: awsSecretAccessKey, context: context }),
         (0, core_1.jsx)(core_2.Dialog, { open: modalOpen, onClose: () => setModalOpen(false), maxWidth: "sm", fullWidth: true },
             (0, core_1.jsx)(core_2.DialogTitle, null, "Set AI Credentials"),
             (0, core_1.jsx)(core_2.DialogContent, { css: { paddingTop: 20 } },
