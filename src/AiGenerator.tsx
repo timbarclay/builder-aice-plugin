@@ -17,18 +17,9 @@ export default function AiGenerator() {
   const model = context.designerState?.editingContentModel?.data.get('name')
   const type = context.designerState?.editingModel?.name
   
-  return <Stack direction="column" component="main" sx={[
-    {
-      justifyContent: 'center',
-      height: 'calc((1 - var(--template-frame-height, 0)) * 100%)',
-      marginTop: 'max(40px - var(--template-frame-height, 0px), 0px)',
-      minHeight: '100%',
-    }
-  ]}>
-    <Typography>
+  return <Typography>
       AI Generator {type}: {model}
     </Typography>
-  </Stack>
 }
 
 Builder.register('editor.mainTab', {
