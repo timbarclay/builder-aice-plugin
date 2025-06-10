@@ -1,21 +1,52 @@
 import React, { useState } from 'react';
 import { jsx } from '@emotion/core';
 import { Builder } from '@builder.io/sdk';
-import { Grid, Typography, Button, Dialog, DialogTitle, DialogContent, TextField, DialogActions } from '@material-ui/core';
+import { Paper, Typography, TextField, Button, Grid, Dialog, DialogTitle, DialogContent, DialogActions } from '@material-ui/core';
+import { toJS } from 'mobx';
 
-function GeneratorForm() {
-    return React.createElement("div", null,
-        React.createElement("h1", null, "GeneratorForm"));
+/** @jsx jsx */
+function GeneratorForm({ lessonData, disabled, onGenerate }) {
+    var _a, _b, _c;
+    const [title, setTitle] = useState(lessonData.get('name') || '');
+    const [learningObjective, setLearningObjective] = useState(((_a = lessonData.get('skill')) === null || _a === void 0 ? void 0 : _a.value.data.learningObjective) || '');
+    const [learningGoal, setLearningGoal] = useState(((_b = lessonData.get('skill')) === null || _b === void 0 ? void 0 : _b.value.data.learningGoal) || '');
+    const [targetWordCount, setTargetWordCount] = useState(300);
+    const [vocabularyWords, setVocabularyWords] = useState(((_c = toJS(lessonData.get('vocabularyWords'))) === null || _c === void 0 ? void 0 : _c.map((w) => { var _a; return (_a = w === null || w === void 0 ? void 0 : w.word) === null || _a === void 0 ? void 0 : _a.Default; }).join(', ')) || '');
+    const handleGenerate = () => {
+        onGenerate({
+            title,
+            learningObjective,
+            learningGoal,
+            targetWordCount,
+            vocabularyWords: vocabularyWords.split(',').map((w) => w.trim()).filter((w) => w),
+        });
+    };
+    return (jsx(Paper, { css: { padding: 24, height: '100%' } },
+        jsx(Typography, { variant: "h6", css: { marginBottom: 16 } }, "Content Generation Settings"),
+        jsx("div", { css: { marginBottom: 16 } },
+            jsx(TextField, { label: "Title", fullWidth: true, variant: "outlined", value: title, onChange: (e) => setTitle(e.target.value) })),
+        jsx("div", { css: { marginBottom: 16 } },
+            jsx(TextField, { label: "Learning Objective", fullWidth: true, multiline: true, rows: 2, variant: "outlined", value: learningObjective, onChange: (e) => setLearningObjective(e.target.value) })),
+        jsx("div", { css: { marginBottom: 16 } },
+            jsx(TextField, { label: "Learning Goal", fullWidth: true, multiline: true, rows: 2, variant: "outlined", value: learningGoal, onChange: (e) => setLearningGoal(e.target.value) })),
+        jsx("div", { css: { marginBottom: 16 } },
+            jsx(TextField, { label: "Target Word Count", fullWidth: true, type: "number", variant: "outlined", value: targetWordCount, onChange: (e) => setTargetWordCount(parseInt(e.target.value) || 300) })),
+        jsx("div", { css: { marginBottom: 24 } },
+            jsx(TextField, { label: "Vocabulary Words", fullWidth: true, multiline: true, rows: 3, variant: "outlined", placeholder: "Enter words separated by commas", value: vocabularyWords, onChange: (e) => setVocabularyWords(e.target.value), helperText: "Separate multiple words with commas" })),
+        jsx(Button, { variant: "contained", color: "primary", fullWidth: true, size: "large", onClick: handleGenerate, disabled: disabled }, "Generate Content")));
 }
 
 function Preview() {
     return React.createElement("div", null, "Preview");
 }
 
-function GeneratorPane({ lessonData }) {
+function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, awsSecretAccessKey }) {
+    function onGenerate(parameters) {
+        console.log('onGenerate', parameters);
+    }
     return (React.createElement(Grid, { container: true, css: { height: '100%' } },
         React.createElement(Grid, { item: true, xs: 12, lg: 6 },
-            React.createElement(GeneratorForm, null)),
+            React.createElement(GeneratorForm, { lessonData: lessonData, disabled: !clientId || !clientSecret || !awsAccessKeyId || !awsSecretAccessKey, onGenerate: onGenerate })),
         React.createElement(Grid, { item: true, xs: 12, lg: 6 },
             React.createElement(Preview, null))));
 }
@@ -48,6 +79,7 @@ function AiGenerator({ context }) {
         return jsx("div", { css: { padding: 16, height: '100vh' } },
             jsx(Typography, { variant: "h4", css: { marginBottom: 16 } }, "No lesson data found"));
     }
+    const requiresCredentials = !(clientId && clientSecret && awsAccessKeyId && awsSecretAccessKey);
     const handleSaveCredentials = () => {
         setClientId(formData.clientId);
         setClientSecret(formData.clientSecret);
@@ -67,7 +99,7 @@ function AiGenerator({ context }) {
                 "Use AICE to generate lesson resources for ",
                 model),
             jsx(Button, { variant: "outlined", onClick: () => setModalOpen(true) }, "Set Credentials")),
-        jsx(GeneratorPane, { lessonData: lessonData }),
+        !requiresCredentials && jsx(GeneratorPane, { lessonData: lessonData, clientId: clientId, clientSecret: clientSecret, awsAccessKeyId: awsAccessKeyId, awsSecretAccessKey: awsSecretAccessKey }),
         jsx(Dialog, { open: modalOpen, onClose: () => setModalOpen(false), maxWidth: "sm", fullWidth: true },
             jsx(DialogTitle, null, "Set AI Credentials"),
             jsx(DialogContent, { css: { paddingTop: 20 } },

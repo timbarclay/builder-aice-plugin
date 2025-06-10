@@ -1,2 +1,9 @@
 /// <reference types="react" />
-export default function GeneratorForm(): JSX.Element;
+import { EngineParameters } from './GeneratorPane';
+interface GeneratorFormProps {
+    lessonData: Map<string, any>;
+    disabled: boolean;
+    onGenerate: (parameters: EngineParameters) => void;
+}
+export default function GeneratorForm({ lessonData, disabled, onGenerate }: GeneratorFormProps): JSX.Element;
+export {};

@@ -108,6 +108,7 @@
     "@material-ui/icons": "^1.1.1",
     "@types/react-helmet": "^5.0.14",
     "cross-env": "^6.0.3",
+    "mobx": "^6.13.7",
     "react": "^16.11.0",
     "react-helmet": "^5.2.1"
   }

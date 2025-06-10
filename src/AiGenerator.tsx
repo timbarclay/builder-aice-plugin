@@ -75,7 +75,7 @@ export default function AiGenerator({context}: {context: ApplicationContext}) {
           Set Credentials
         </Button>
       </div>
-      <GeneratorPane lessonData={lessonData} />
+      {!requiresCredentials && <GeneratorPane lessonData={lessonData} clientId={clientId} clientSecret={clientSecret} awsAccessKeyId={awsAccessKeyId} awsSecretAccessKey={awsSecretAccessKey} />}
       
       <Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Set AI Credentials</DialogTitle>
