@@ -1,2 +1,5 @@
 /// <reference types="react" />
-export default function AiGenerator(): JSX.Element;
+import { ApplicationContext } from './interfaces/application-context';
+export default function AiGenerator({ context }: {
+    context: ApplicationContext;
+}): JSX.Element;

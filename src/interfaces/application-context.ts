@@ -126,6 +126,10 @@ export interface ApplicationContext {
      * Log the current user out
      */
     signOut(): void;
+    organization: {
+      value: {settings: { plugins: Map<string, any> }},
+      save(): void
+    };
   };
   httpCache: {
     /**
