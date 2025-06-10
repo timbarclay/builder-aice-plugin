@@ -135,10 +135,6 @@ export default function GeneratorPane({ lessonData, clientId, clientSecret, awsA
     if (currentGenerationId) {
       settings.set(userContentId, currentGenerationId);
       context.user.organization.save();
-    } else {
-      // Clear the stored generation ID when null
-      settings.delete(userContentId);
-      context.user.organization.save();
     }
   }, [currentGenerationId, userContentId]);
 

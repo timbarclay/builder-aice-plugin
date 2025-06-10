@@ -24,75 +24,77 @@ async function hmac(key: ArrayBuffer | string, message: string): Promise<ArrayBu
 }
 
 export async function getS3Object(accessKeyId: string, secretAccessKey: string, s3Uri: string) {
+  return Promise.resolve(mock)
+  
   // Convert s3://bucket/key to https://bucket.s3.region.amazonaws.com/key
-  const match = s3Uri.match(/^s3:\/\/([^\/]+)\/(.+)$/);
-  if (!match) {
-    throw new Error(`Invalid S3 URI format: ${s3Uri}`);
-  }
+  // const match = s3Uri.match(/^s3:\/\/([^\/]+)\/(.+)$/);
+  // if (!match) {
+  //   throw new Error(`Invalid S3 URI format: ${s3Uri}`);
+  // }
   
-  const bucket = match[1];
-  const key = match[2];
-  const region = 'us-east-1';
-  const httpsUrl = `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+  // const bucket = match[1];
+  // const key = match[2];
+  // const region = 'us-east-1';
+  // const httpsUrl = `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
   
-  const url = new URL(httpsUrl);
+  // const url = new URL(httpsUrl);
   
-  const service = 's3';
-  const now = new Date();
-  const isoDate = now.toISOString().replace(/[:\-]|\.\d{3}/g, '');
-  const dateStamp = isoDate.slice(0, 8);
+  // const service = 's3';
+  // const now = new Date();
+  // const isoDate = now.toISOString().replace(/[:\-]|\.\d{3}/g, '');
+  // const dateStamp = isoDate.slice(0, 8);
   
-  // Create canonical request
-  const method = 'GET';
-  const canonicalUri = `/${key}`;
-  const canonicalQuerystring = '';
-  const canonicalHeaders = `host:${url.hostname}\nx-amz-date:${isoDate}\n`;
-  const signedHeaders = 'host;x-amz-date';
-  const payloadHash = await sha256('');
+  // // Create canonical request
+  // const method = 'GET';
+  // const canonicalUri = `/${key}`;
+  // const canonicalQuerystring = '';
+  // const canonicalHeaders = `host:${url.hostname}\nx-amz-date:${isoDate}\n`;
+  // const signedHeaders = 'host;x-amz-date';
+  // const payloadHash = await sha256('');
   
-  const canonicalRequest = [
-    method,
-    canonicalUri,
-    canonicalQuerystring,
-    canonicalHeaders,
-    signedHeaders,
-    toHex(payloadHash)
-  ].join('\n');
+  // const canonicalRequest = [
+  //   method,
+  //   canonicalUri,
+  //   canonicalQuerystring,
+  //   canonicalHeaders,
+  //   signedHeaders,
+  //   toHex(payloadHash)
+  // ].join('\n');
   
-  // Create string to sign
-  const algorithm = 'AWS4-HMAC-SHA256';
-  const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
-  const stringToSign = [
-    algorithm,
-    isoDate,
-    credentialScope,
-    toHex(await sha256(canonicalRequest))
-  ].join('\n');
+  // // Create string to sign
+  // const algorithm = 'AWS4-HMAC-SHA256';
+  // const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
+  // const stringToSign = [
+  //   algorithm,
+  //   isoDate,
+  //   credentialScope,
+  //   toHex(await sha256(canonicalRequest))
+  // ].join('\n');
   
-  // Calculate signature
-  const kDate = await hmac(`AWS4${secretAccessKey}`, dateStamp);
-  const kRegion = await hmac(kDate, region);
-  const kService = await hmac(kRegion, service);
-  const kSigning = await hmac(kService, 'aws4_request');
-  const signature = toHex(await hmac(kSigning, stringToSign));
+  // // Calculate signature
+  // const kDate = await hmac(`AWS4${secretAccessKey}`, dateStamp);
+  // const kRegion = await hmac(kDate, region);
+  // const kService = await hmac(kRegion, service);
+  // const kSigning = await hmac(kService, 'aws4_request');
+  // const signature = toHex(await hmac(kSigning, stringToSign));
   
-  // Create authorization header
-  const authorization = `${algorithm} Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+  // // Create authorization header
+  // const authorization = `${algorithm} Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
   
-  // Make the request
-  const response = await fetch(httpsUrl, {
-    headers: {
-      'Authorization': authorization,
-      'x-amz-date': isoDate
-    }
-  });
+  // // Make the request
+  // const response = await fetch(httpsUrl, {
+  //   headers: {
+  //     'Authorization': authorization,
+  //     'x-amz-date': isoDate
+  //   }
+  // });
   
-  if (!response.ok) {
-    throw new Error(`S3 request failed: ${response.status} ${response.statusText}`);
-  }
+  // if (!response.ok) {
+  //   throw new Error(`S3 request failed: ${response.status} ${response.statusText}`);
+  // }
   
-  const text = await response.text();
-  return JSON.parse(text);
+  // const text = await response.text();
+  // return JSON.parse(text);
 }
 
 const mock = {
