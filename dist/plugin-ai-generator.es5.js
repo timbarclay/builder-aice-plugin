@@ -1,8 +1,38 @@
-import React, { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { jsx } from '@emotion/core';
 import { Builder } from '@builder.io/sdk';
-import { Paper, Typography, TextField, Button, Grid, Dialog, DialogTitle, DialogContent, DialogActions } from '@material-ui/core';
+import { Paper, Typography, TextField, Button, Divider, Grid, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions } from '@material-ui/core';
 import { toJS } from 'mobx';
+
+/******************************************************************************
+Copyright (c) Microsoft Corporation.
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
+***************************************************************************** */
+
+function __awaiter(thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+}
+
+typeof SuppressedError === "function" ? SuppressedError : function (error, suppressed, message) {
+    var e = new Error(message);
+    return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
+};
 
 /** @jsx jsx */
 function GeneratorForm({ lessonData, disabled, onGenerate }) {
@@ -36,19 +66,288 @@ function GeneratorForm({ lessonData, disabled, onGenerate }) {
         jsx(Button, { variant: "contained", color: "primary", fullWidth: true, size: "large", onClick: handleGenerate, disabled: disabled }, "Generate Content")));
 }
 
-function Preview() {
-    return React.createElement("div", null, "Preview");
+function Preview({ content }) {
+    if (!content) {
+        return jsx("div", null, "Preview");
+    }
+    return (jsx(Paper, { css: { padding: 24, height: '100%', overflow: 'auto' } },
+        jsx(Typography, { variant: "h6", css: { marginBottom: 16 } }, "Generated Content"),
+        jsx("div", { css: { marginBottom: 24 } },
+            jsx(Typography, { variant: "subtitle2", css: { marginBottom: 8, fontWeight: 'bold' } }, "Article:"),
+            jsx(Typography, { variant: "body2", css: { whiteSpace: 'pre-wrap', lineHeight: 1.6 } }, content.body)),
+        jsx(Divider, { css: { marginBottom: 16 } }),
+        jsx(Typography, { variant: "subtitle2", css: { marginBottom: 12, fontWeight: 'bold' } }, "Comprehension Questions:"),
+        content.questions.map((q, index) => (jsx("div", { key: index, css: { marginBottom: 12 } },
+            jsx(Typography, { variant: "body2", css: { fontWeight: 500 } },
+                index + 1,
+                ". ",
+                q.question),
+            jsx(Typography, { variant: "body2", color: "textSecondary", css: { marginLeft: 16 } },
+                "Answer: ",
+                q.answer))))));
+}
+
+const AUTH_URL = 'https://ice-auth-dev.auth.us-east-1.amazoncognito.com/oauth2/token';
+const AI_URL = 'https://06vso1ffs3.execute-api.us-east-1.amazonaws.com/dev';
+class AiceApi {
+    constructor(clientId, clientSecret) {
+        this.clientId = clientId;
+        this.clientSecret = clientSecret;
+    }
+    generateArticle(title, learningObjectives, learningGoal, length, vocabularyList) {
+        return this.callApi('/generate/article', {
+            title,
+            learning_objectives: [learningObjectives],
+            learning_goal: [learningGoal],
+            word_count: length,
+            vocabulary_list: vocabularyList,
+            generate_images: false,
+        });
+    }
+    generationStatus(generationId) {
+        return this.callApi(`/status`, {
+            generation_id: generationId,
+        });
+    }
+    callApi(path, body) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.accessToken || this.isTokenExpired()) {
+                yield this.auth();
+            }
+            const response = yield fetch(`${AI_URL}${path}`, {
+                method: 'POST',
+                body: JSON.stringify(body),
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${this.accessToken}`,
+                },
+            });
+            if (response.status === 401 || response.status === 403) {
+                this.accessToken = undefined;
+                this.accessTokenExpiration = undefined;
+            }
+            return response.json();
+        });
+    }
+    auth() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const response = yield fetch(AUTH_URL, {
+                method: 'POST',
+                body: new URLSearchParams({
+                    grant_type: 'client_credentials',
+                    client_id: this.clientId,
+                    client_secret: this.clientSecret,
+                    scope: 'ice-m2m-resource-server-dev/read',
+                }),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+            });
+            const data = yield response.json();
+            this.accessToken = data.access_token;
+            this.accessTokenExpiration = new Date(Date.now() + data.expires_in * 1000);
+        });
+    }
+    isTokenExpired() {
+        return this.accessTokenExpiration && this.accessTokenExpiration < new Date();
+    }
+}
+
+// AWS Signature V4 implementation for browser
+function sha256(message) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const msgBuffer = new TextEncoder().encode(message);
+        return yield crypto.subtle.digest('SHA-256', msgBuffer);
+    });
+}
+function toHex(buffer) {
+    return Array.from(new Uint8Array(buffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+}
+function hmac(key, message) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const keyBuffer = typeof key === 'string' ? new TextEncoder().encode(key) : key;
+        const cryptoKey = yield crypto.subtle.importKey('raw', keyBuffer, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+        const msgBuffer = new TextEncoder().encode(message);
+        return yield crypto.subtle.sign('HMAC', cryptoKey, msgBuffer);
+    });
+}
+function getS3Object(accessKeyId, secretAccessKey, s3Url) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const url = new URL(s3Url);
+        url.hostname.split('.')[0];
+        const key = url.pathname.slice(1); // Remove leading /
+        const region = 'us-east-1';
+        const service = 's3';
+        const now = new Date();
+        const isoDate = now.toISOString().replace(/[:\-]|\.\d{3}/g, '');
+        const dateStamp = isoDate.slice(0, 8);
+        // Create canonical request
+        const method = 'GET';
+        const canonicalUri = `/${key}`;
+        const canonicalQuerystring = '';
+        const canonicalHeaders = `host:${url.hostname}\nx-amz-date:${isoDate}\n`;
+        const signedHeaders = 'host;x-amz-date';
+        const payloadHash = yield sha256('');
+        const canonicalRequest = [
+            method,
+            canonicalUri,
+            canonicalQuerystring,
+            canonicalHeaders,
+            signedHeaders,
+            toHex(payloadHash)
+        ].join('\n');
+        // Create string to sign
+        const algorithm = 'AWS4-HMAC-SHA256';
+        const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
+        const stringToSign = [
+            algorithm,
+            isoDate,
+            credentialScope,
+            toHex(yield sha256(canonicalRequest))
+        ].join('\n');
+        // Calculate signature
+        const kDate = yield hmac(`AWS4${secretAccessKey}`, dateStamp);
+        const kRegion = yield hmac(kDate, region);
+        const kService = yield hmac(kRegion, service);
+        const kSigning = yield hmac(kService, 'aws4_request');
+        const signature = toHex(yield hmac(kSigning, stringToSign));
+        // Create authorization header
+        const authorization = `${algorithm} Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+        // Make the request
+        const response = yield fetch(s3Url, {
+            headers: {
+                'Authorization': authorization,
+                'x-amz-date': isoDate
+            }
+        });
+        if (!response.ok) {
+            throw new Error(`S3 request failed: ${response.status} ${response.statusText}`);
+        }
+        const text = yield response.text();
+        return JSON.parse(text);
+    });
 }
 
 function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, awsSecretAccessKey }) {
-    function onGenerate(parameters) {
-        console.log('onGenerate', parameters);
-    }
-    return (React.createElement(Grid, { container: true, css: { height: '100%' } },
-        React.createElement(Grid, { item: true, xs: 12, lg: 6 },
-            React.createElement(GeneratorForm, { lessonData: lessonData, disabled: !clientId || !clientSecret || !awsAccessKeyId || !awsSecretAccessKey, onGenerate: onGenerate })),
-        React.createElement(Grid, { item: true, xs: 12, lg: 6 },
-            React.createElement(Preview, null))));
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [generationStatus, setGenerationStatus] = useState('');
+    const [generatedContent, setGeneratedContent] = useState(null);
+    const [error, setError] = useState(null);
+    const [currentGenerationId, setCurrentGenerationId] = useState(null);
+    const pollingIntervalRef = useRef(null);
+    const apiRef = useRef(null);
+    // Cleanup polling on unmount
+    useEffect(() => {
+        return () => {
+            if (pollingIntervalRef.current) {
+                clearInterval(pollingIntervalRef.current);
+            }
+        };
+    }, []);
+    const stopGeneration = () => {
+        if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+        }
+        setIsGenerating(false);
+        setGenerationStatus('Generation cancelled');
+        setCurrentGenerationId(null);
+    };
+    const startPolling = (api, generationId) => {
+        setCurrentGenerationId(generationId);
+        const pollStatus = () => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const status = yield api.generationStatus(generationId);
+                setGenerationStatus(`Status: ${status.generation_status}`);
+                if (status.generation_status === 'COMPLETED') {
+                    if (pollingIntervalRef.current) {
+                        clearInterval(pollingIntervalRef.current);
+                        pollingIntervalRef.current = null;
+                    }
+                    // Get generated content from S3
+                    setGenerationStatus('Retrieving generated content...');
+                    const result = yield getS3Object(awsAccessKeyId, awsSecretAccessKey, status.output_location);
+                    const content = JSON.parse(result.article_text);
+                    setGeneratedContent(content);
+                    setGenerationStatus('Generation completed successfully!');
+                    setIsGenerating(false);
+                    setCurrentGenerationId(null);
+                }
+                else if (status.generation_status === 'FAILED') {
+                    if (pollingIntervalRef.current) {
+                        clearInterval(pollingIntervalRef.current);
+                        pollingIntervalRef.current = null;
+                    }
+                    throw new Error('Generation failed');
+                }
+            }
+            catch (err) {
+                if (pollingIntervalRef.current) {
+                    clearInterval(pollingIntervalRef.current);
+                    pollingIntervalRef.current = null;
+                }
+                const errorMessage = err instanceof Error ? err.message : 'Status check failed';
+                setError(errorMessage);
+                setGenerationStatus('');
+                setIsGenerating(false);
+                setCurrentGenerationId(null);
+            }
+        });
+        // Start polling immediately, then every 10 seconds
+        pollStatus();
+        pollingIntervalRef.current = window.setInterval(pollStatus, 10000);
+    };
+    const onGenerate = (parameters) => __awaiter(this, void 0, void 0, function* () {
+        if (!clientId || !clientSecret || !awsAccessKeyId || !awsSecretAccessKey) {
+            setError('Missing credentials');
+            return;
+        }
+        setIsGenerating(true);
+        setError(null);
+        setGeneratedContent(null);
+        setGenerationStatus('Starting generation...');
+        try {
+            const api = new AiceApi(clientId, clientSecret);
+            apiRef.current = api;
+            // Start generation
+            setGenerationStatus('Submitting generation request...');
+            const response = yield api.generateArticle(parameters.title, parameters.learningObjective, parameters.learningGoal, parameters.targetWordCount, parameters.vocabularyWords);
+            // Start polling for completion
+            setGenerationStatus('Generation in progress...');
+            startPolling(api, response.generation_id);
+        }
+        catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Generation failed';
+            setError(errorMessage);
+            setGenerationStatus('');
+            setIsGenerating(false);
+        }
+    });
+    return (jsx(Grid, { container: true, css: { height: '100%' } },
+        jsx(Grid, { item: true, xs: 12, lg: 6 },
+            jsx(GeneratorForm, { lessonData: lessonData, disabled: !clientId || !clientSecret || !awsAccessKeyId || !awsSecretAccessKey || isGenerating, onGenerate: onGenerate })),
+        jsx(Grid, { item: true, xs: 12, lg: 6 },
+            jsx("div", { css: { padding: 24, height: '100%' } },
+                isGenerating && (jsx("div", { css: { textAlign: 'center', padding: 20 } },
+                    jsx(CircularProgress, { css: { marginBottom: 16 } }),
+                    jsx(Typography, { variant: "body2", color: "textSecondary", css: { marginBottom: 16 } }, generationStatus),
+                    jsx(Button, { variant: "outlined", onClick: stopGeneration, size: "small" }, "Cancel Generation"))),
+                error && (jsx("div", { css: { padding: 20, backgroundColor: '#ffebee', borderRadius: 4 } },
+                    jsx(Typography, { variant: "body2", color: "error" },
+                        "Error: ",
+                        error))),
+                generatedContent && !isGenerating && (jsx(Preview, { content: generatedContent })),
+                !isGenerating && !generatedContent && !error && (jsx("div", { css: {
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        height: '100%',
+                        color: '#666',
+                        textAlign: 'center'
+                    } },
+                    jsx(Typography, { variant: "body2" }, "Fill out the form and click \"Generate Content\" to create your lesson")))))));
 }
 
 /** @jsx jsx */

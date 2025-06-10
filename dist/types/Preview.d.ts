@@ -1,2 +1,12 @@
 /// <reference types="react" />
-export default function Preview(): JSX.Element;
+interface PreviewProps {
+    content?: {
+        body: string;
+        questions: Array<{
+            question: string;
+            answer: string;
+        }>;
+    };
+}
+export default function Preview({ content }: PreviewProps): JSX.Element;
+export {};

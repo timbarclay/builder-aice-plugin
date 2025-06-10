@@ -6,6 +6,7 @@ import typescript from 'rollup-plugin-typescript2';
 import json from 'rollup-plugin-json';
 import serve from 'rollup-plugin-serve';
 
+
 const SERVE = process.env.SERVE === 'true';
 
 const pkg = require('./package.json');
@@ -40,7 +41,10 @@ export default {
     // Allow node_modules resolution, so you can use 'external' to control
     // which external modules to include in the bundle
     // https://github.com/rollup/rollup-plugin-node-resolve#usage
-    resolve(),
+    resolve({
+      browser: true,
+      preferBuiltins: false
+    }),
 
     // Resolve source maps to the original source
     sourceMaps(),
