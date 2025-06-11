@@ -13,9 +13,10 @@ interface PreviewProps {
   }
   onCreateResource?: () => void
   isCreatingResource?: boolean
+  createdResourceId?: string | null
 }
 
-export default function Preview({ content, onCreateResource, isCreatingResource }: PreviewProps) {
+export default function Preview({ content, onCreateResource, isCreatingResource, createdResourceId }: PreviewProps) {
   if (!content) {
     return <div>Preview</div>
   }
@@ -26,7 +27,16 @@ export default function Preview({ content, onCreateResource, isCreatingResource 
         <Typography variant="h6">
           Generated Content
         </Typography>
-        {onCreateResource && (
+        {createdResourceId ? (
+          <Button
+            variant="contained"
+            color="primary"
+            size="small"
+            onClick={() => window.open(`https://builder.io/content/${createdResourceId}`, '_blank')}
+          >
+            View created resource
+          </Button>
+        ) : onCreateResource && (
           <Button
             variant="contained"
             color="secondary"

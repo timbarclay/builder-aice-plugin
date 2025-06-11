@@ -47,6 +47,7 @@ export default function GeneratorPane({ lessonData, clientId, clientSecret, awsA
   const [currentGenerationId, setCurrentGenerationId] = useState<string | null>(null);
   const [isCreatingResource, setIsCreatingResource] = useState(false);
   const [title, setTitle] = useState<string>('');
+  const [createdResourceId, setCreatedResourceId] = useState<string | null>(null);
   
   const pollingIntervalRef = useRef<number | null>(null);
   const apiRef = useRef<AiceApi | null>(null);
@@ -178,7 +179,12 @@ export default function GeneratorPane({ lessonData, clientId, clientSecret, awsA
 
       console.log('Structured resource created:', createResult);
       
-      // Optionally navigate to the new resource or show success message
+      // Store the created resource ID
+      if (createResult.id) {
+        setCreatedResourceId(createResult.id);
+      }
+      
+      // Show success message
       alert(`Structured resource "${articleName}" created successfully!`);
       
     } catch (err) {
@@ -200,6 +206,7 @@ export default function GeneratorPane({ lessonData, clientId, clientSecret, awsA
     setGeneratedContent(null);
     setGenerationStatus('Starting generation...');
     setTitle(parameters.title);
+    setCreatedResourceId(null); // Reset created resource ID for new generation
 
     try {
       const api = new AiceApi(clientId, clientSecret);
@@ -263,6 +270,7 @@ export default function GeneratorPane({ lessonData, clientId, clientSecret, awsA
               content={generatedContent} 
               onCreateResource={createStructuredResource}
               isCreatingResource={isCreatingResource}
+              createdResourceId={createdResourceId}
             />
           )}
           

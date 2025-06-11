@@ -9,6 +9,7 @@ interface PreviewProps {
     };
     onCreateResource?: () => void;
     isCreatingResource?: boolean;
+    createdResourceId?: string | null;
 }
-export default function Preview({ content, onCreateResource, isCreatingResource }: PreviewProps): JSX.Element;
+export default function Preview({ content, onCreateResource, isCreatingResource, createdResourceId }: PreviewProps): JSX.Element;
 export {};

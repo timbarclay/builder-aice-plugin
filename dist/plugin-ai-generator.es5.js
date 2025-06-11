@@ -66,14 +66,14 @@ function GeneratorForm({ lessonData, disabled, onGenerate }) {
         jsx(Button, { variant: "contained", color: "primary", fullWidth: true, size: "large", onClick: handleGenerate, disabled: disabled }, "Generate Content")));
 }
 
-function Preview({ content, onCreateResource, isCreatingResource }) {
+function Preview({ content, onCreateResource, isCreatingResource, createdResourceId }) {
     if (!content) {
         return jsx("div", null, "Preview");
     }
     return (jsx(Paper, { css: { padding: 24, height: '100%', overflow: 'auto' } },
         jsx("div", { css: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 } },
             jsx(Typography, { variant: "h6" }, "Generated Content"),
-            onCreateResource && (jsx(Button, { variant: "contained", color: "secondary", onClick: onCreateResource, disabled: isCreatingResource, size: "small" }, isCreatingResource ? 'Creating...' : 'Create Structured Resource'))),
+            createdResourceId ? (jsx(Button, { variant: "contained", color: "primary", size: "small", onClick: () => window.open(`https://builder.io/content/${createdResourceId}`, '_blank') }, "View created resource")) : onCreateResource && (jsx(Button, { variant: "contained", color: "secondary", onClick: onCreateResource, disabled: isCreatingResource, size: "small" }, isCreatingResource ? 'Creating...' : 'Create Structured Resource'))),
         jsx("div", { css: { marginBottom: 24 } },
             jsx(Typography, { variant: "subtitle2", css: { marginBottom: 8, fontWeight: 'bold' } }, "Article:"),
             jsx(Typography, { variant: "body2", css: { whiteSpace: 'pre-wrap', lineHeight: 1.6 } }, content.body)),
@@ -235,6 +235,7 @@ function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, aws
     const [currentGenerationId, setCurrentGenerationId] = useState(null);
     const [isCreatingResource, setIsCreatingResource] = useState(false);
     const [title, setTitle] = useState('');
+    const [createdResourceId, setCreatedResourceId] = useState(null);
     const pollingIntervalRef = useRef(null);
     const apiRef = useRef(null);
     const startPolling = (api, generationId) => {
@@ -349,7 +350,11 @@ function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, aws
                 }
             });
             console.log('Structured resource created:', createResult);
-            // Optionally navigate to the new resource or show success message
+            // Store the created resource ID
+            if (createResult.id) {
+                setCreatedResourceId(createResult.id);
+            }
+            // Show success message
             alert(`Structured resource "${articleName}" created successfully!`);
         }
         catch (err) {
@@ -370,6 +375,7 @@ function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, aws
         setGeneratedContent(null);
         setGenerationStatus('Starting generation...');
         setTitle(parameters.title);
+        setCreatedResourceId(null); // Reset created resource ID for new generation
         try {
             const api = new AiceApi(clientId, clientSecret);
             apiRef.current = api;
@@ -400,7 +406,7 @@ function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, aws
                     jsx(Typography, { variant: "body2", color: "error" },
                         "Error: ",
                         error))),
-                generatedContent && !isGenerating && (jsx(Preview, { content: generatedContent, onCreateResource: createStructuredResource, isCreatingResource: isCreatingResource })),
+                generatedContent && !isGenerating && (jsx(Preview, { content: generatedContent, onCreateResource: createStructuredResource, isCreatingResource: isCreatingResource, createdResourceId: createdResourceId })),
                 !isGenerating && !generatedContent && !error && (jsx("div", { css: {
                         display: 'flex',
                         alignItems: 'center',

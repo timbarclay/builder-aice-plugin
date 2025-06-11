@@ -66,14 +66,14 @@
             core.jsx(core$1.Button, { variant: "contained", color: "primary", fullWidth: true, size: "large", onClick: handleGenerate, disabled: disabled }, "Generate Content")));
     }
 
-    function Preview({ content, onCreateResource, isCreatingResource }) {
+    function Preview({ content, onCreateResource, isCreatingResource, createdResourceId }) {
         if (!content) {
             return core.jsx("div", null, "Preview");
         }
         return (core.jsx(core$1.Paper, { css: { padding: 24, height: '100%', overflow: 'auto' } },
             core.jsx("div", { css: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 } },
                 core.jsx(core$1.Typography, { variant: "h6" }, "Generated Content"),
-                onCreateResource && (core.jsx(core$1.Button, { variant: "contained", color: "secondary", onClick: onCreateResource, disabled: isCreatingResource, size: "small" }, isCreatingResource ? 'Creating...' : 'Create Structured Resource'))),
+                createdResourceId ? (core.jsx(core$1.Button, { variant: "contained", color: "primary", size: "small", onClick: () => window.open(`https://builder.io/content/${createdResourceId}`, '_blank') }, "View created resource")) : onCreateResource && (core.jsx(core$1.Button, { variant: "contained", color: "secondary", onClick: onCreateResource, disabled: isCreatingResource, size: "small" }, isCreatingResource ? 'Creating...' : 'Create Structured Resource'))),
             core.jsx("div", { css: { marginBottom: 24 } },
                 core.jsx(core$1.Typography, { variant: "subtitle2", css: { marginBottom: 8, fontWeight: 'bold' } }, "Article:"),
                 core.jsx(core$1.Typography, { variant: "body2", css: { whiteSpace: 'pre-wrap', lineHeight: 1.6 } }, content.body)),
@@ -235,6 +235,7 @@
         const [currentGenerationId, setCurrentGenerationId] = react.useState(null);
         const [isCreatingResource, setIsCreatingResource] = react.useState(false);
         const [title, setTitle] = react.useState('');
+        const [createdResourceId, setCreatedResourceId] = react.useState(null);
         const pollingIntervalRef = react.useRef(null);
         const apiRef = react.useRef(null);
         const startPolling = (api, generationId) => {
@@ -349,7 +350,11 @@
                     }
                 });
                 console.log('Structured resource created:', createResult);
-                // Optionally navigate to the new resource or show success message
+                // Store the created resource ID
+                if (createResult.id) {
+                    setCreatedResourceId(createResult.id);
+                }
+                // Show success message
                 alert(`Structured resource "${articleName}" created successfully!`);
             }
             catch (err) {
@@ -370,6 +375,7 @@
             setGeneratedContent(null);
             setGenerationStatus('Starting generation...');
             setTitle(parameters.title);
+            setCreatedResourceId(null); // Reset created resource ID for new generation
             try {
                 const api = new AiceApi(clientId, clientSecret);
                 apiRef.current = api;
@@ -400,7 +406,7 @@
                         core.jsx(core$1.Typography, { variant: "body2", color: "error" },
                             "Error: ",
                             error))),
-                    generatedContent && !isGenerating && (core.jsx(Preview, { content: generatedContent, onCreateResource: createStructuredResource, isCreatingResource: isCreatingResource })),
+                    generatedContent && !isGenerating && (core.jsx(Preview, { content: generatedContent, onCreateResource: createStructuredResource, isCreatingResource: isCreatingResource, createdResourceId: createdResourceId })),
                     !isGenerating && !generatedContent && !error && (core.jsx("div", { css: {
                             display: 'flex',
                             alignItems: 'center',
