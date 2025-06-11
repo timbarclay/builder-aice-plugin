@@ -118,6 +118,9 @@ export interface ApplicationContext {
   user: {
     id: string;
     getUser(id: string): Promise<BuilderUser | null>;
+    data: {
+      displayName: string;
+    }
     listUsers(): Promise<BuilderUser[]>;
     authHeaders: { [key: string]: string };
     apiKey: string;
