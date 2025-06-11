@@ -66,14 +66,16 @@ function GeneratorForm({ lessonData, disabled, onGenerate }) {
         jsx(Button, { variant: "contained", color: "primary", fullWidth: true, size: "large", onClick: handleGenerate, disabled: disabled }, "Generate Content")));
 }
 
-function Preview({ content, onCreateResource, isCreatingResource, createdResourceId }) {
+function Preview({ content, onCreateResource, onCreateVisualResource, isCreatingResource, isCreatingVisualResource, createdResourceId, createdVisualResourceId }) {
     if (!content) {
         return jsx("div", null, "Preview");
     }
     return (jsx(Paper, { css: { padding: 24, height: '100%', overflow: 'auto' } },
         jsx("div", { css: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 } },
             jsx(Typography, { variant: "h6" }, "Generated Content"),
-            createdResourceId ? (jsx(Button, { variant: "contained", color: "primary", size: "small", onClick: () => window.open(`https://builder.io/content/${createdResourceId}`, '_blank') }, "View created resource")) : onCreateResource && (jsx(Button, { variant: "contained", color: "secondary", onClick: onCreateResource, disabled: isCreatingResource, size: "small" }, isCreatingResource ? 'Creating...' : 'Create Structured Resource'))),
+            jsx("div", { css: { display: 'flex', gap: 8 } },
+                createdResourceId ? (jsx(Button, { variant: "contained", color: "primary", size: "small", onClick: () => window.open(`https://builder.io/content/${createdResourceId}`, '_blank') }, "View Structured Resource")) : onCreateResource && (jsx(Button, { variant: "contained", color: "secondary", onClick: onCreateResource, disabled: isCreatingResource || isCreatingVisualResource, size: "small" }, isCreatingResource ? 'Creating...' : 'Create Structured Resource')),
+                createdVisualResourceId ? (jsx(Button, { variant: "contained", color: "primary", size: "small", onClick: () => window.open(`https://builder.io/content/${createdVisualResourceId}`, '_blank') }, "View Visual Resource")) : onCreateVisualResource && (jsx(Button, { variant: "outlined", color: "secondary", onClick: onCreateVisualResource, disabled: isCreatingResource || isCreatingVisualResource, size: "small" }, isCreatingVisualResource ? 'Creating...' : 'Create Visual Resource')))),
         jsx("div", { css: { marginBottom: 24 } },
             jsx(Typography, { variant: "subtitle2", css: { marginBottom: 8, fontWeight: 'bold' } }, "Article:"),
             jsx(Typography, { variant: "body2", css: { whiteSpace: 'pre-wrap', lineHeight: 1.6 } }, content.body)),
@@ -194,18 +196,20 @@ function getS3Object(accessKeyId, secretAccessKey, s3Uri) {
         const dateStamp = isoDate.slice(0, 8);
         // Create canonical request
         const method = 'GET';
-        const canonicalUri = `/${key}`;
+        // URI encode the path, but preserve the forward slashes
+        const canonicalUri = '/' + key.split('/').map(segment => encodeURIComponent(segment)).join('/');
         const canonicalQuerystring = '';
-        const canonicalHeaders = `host:${url.hostname}\nx-amz-date:${isoDate}\n`;
-        const signedHeaders = 'host;x-amz-date';
         const payloadHash = yield sha256('');
+        const payloadHashHex = toHex(payloadHash);
+        const canonicalHeaders = `host:${url.hostname}\nx-amz-content-sha256:${payloadHashHex}\nx-amz-date:${isoDate}\n`;
+        const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
         const canonicalRequest = [
             method,
             canonicalUri,
             canonicalQuerystring,
             canonicalHeaders,
             signedHeaders,
-            toHex(payloadHash)
+            payloadHashHex
         ].join('\n');
         // Create string to sign
         const algorithm = 'AWS4-HMAC-SHA256';
@@ -228,7 +232,8 @@ function getS3Object(accessKeyId, secretAccessKey, s3Uri) {
         const response = yield fetch(httpsUrl, {
             headers: {
                 'Authorization': authorization,
-                'x-amz-date': isoDate
+                'x-amz-date': isoDate,
+                'x-amz-content-sha256': payloadHashHex
             }
         });
         if (!response.ok) {
@@ -251,8 +256,10 @@ function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, aws
     const [error, setError] = useState(null);
     const [currentGenerationId, setCurrentGenerationId] = useState(null);
     const [isCreatingResource, setIsCreatingResource] = useState(false);
+    const [isCreatingVisualResource, setIsCreatingVisualResource] = useState(false);
     const [title, setTitle] = useState('');
     const [createdResourceId, setCreatedResourceId] = useState(null);
+    const [createdVisualResourceId, setCreatedVisualResourceId] = useState(null);
     const pollingIntervalRef = useRef(null);
     const apiRef = useRef(null);
     const startPolling = (api, generationId) => {
@@ -382,6 +389,55 @@ function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, aws
             setIsCreatingResource(false);
         }
     });
+    const createVisualResource = () => __awaiter(this, void 0, void 0, function* () {
+        var _c;
+        if (!generatedContent)
+            return;
+        setIsCreatingVisualResource(true);
+        try {
+            // Convert the article content into Builder blocks
+            const paragraphs = generatedContent.body.split('\n\n').filter(p => p.trim());
+            const blocks = paragraphs.map(paragraph => ({
+                '@type': '@builder.io/sdk:Element',
+                component: {
+                    name: 'Text',
+                    options: {
+                        text: `<p>${paragraph}</p>`
+                    }
+                }
+            }));
+            // Wrap all text blocks in a container div
+            const containerBlock = {
+                '@type': '@builder.io/sdk:Element',
+                tagName: 'div',
+                children: blocks
+            };
+            const articleName = `${title || 'Article'} - AI visual resource by ${((_c = context.user.data) === null || _c === void 0 ? void 0 : _c.displayName) || 'User'}`;
+            const slug = articleName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+            const createResult = yield context.createContent('resource', {
+                name: articleName,
+                data: {
+                    title: articleName,
+                    slug: slug,
+                    blocks: [containerBlock]
+                }
+            });
+            console.log('Visual resource created:', createResult);
+            // Store the created visual resource ID
+            if (createResult.id) {
+                setCreatedVisualResourceId(createResult.id);
+            }
+            // Show success message
+            alert(`Visual resource "${articleName}" created successfully!`);
+        }
+        catch (err) {
+            console.error('Error creating visual resource:', err);
+            alert(`Error creating visual resource: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        }
+        finally {
+            setIsCreatingVisualResource(false);
+        }
+    });
     const onGenerate = (parameters) => __awaiter(this, void 0, void 0, function* () {
         if (!clientId || !clientSecret || !awsAccessKeyId || !awsSecretAccessKey) {
             setError('Missing credentials');
@@ -393,6 +449,7 @@ function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, aws
         setGenerationStatus('Starting generation...');
         setTitle(parameters.title);
         setCreatedResourceId(null); // Reset created resource ID for new generation
+        setCreatedVisualResourceId(null); // Reset created visual resource ID for new generation
         try {
             const api = new AiceApi(clientId, clientSecret);
             apiRef.current = api;
@@ -423,7 +480,7 @@ function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, aws
                     jsx(Typography, { variant: "body2", color: "error" },
                         "Error: ",
                         error))),
-                generatedContent && !isGenerating && (jsx(Preview, { content: generatedContent, onCreateResource: createStructuredResource, isCreatingResource: isCreatingResource, createdResourceId: createdResourceId })),
+                generatedContent && !isGenerating && (jsx(Preview, { content: generatedContent, onCreateResource: createStructuredResource, onCreateVisualResource: createVisualResource, isCreatingResource: isCreatingResource, isCreatingVisualResource: isCreatingVisualResource, createdResourceId: createdResourceId, createdVisualResourceId: createdVisualResourceId })),
                 !isGenerating && !generatedContent && !error && (jsx("div", { css: {
                         display: 'flex',
                         alignItems: 'center',

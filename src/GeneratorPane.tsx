@@ -8,6 +8,7 @@ import { AiceApi } from './api/aiceApi';
 import { getS3Object } from './api/resultBucketApi';
 import { ApplicationContext } from './interfaces/application-context';
 import { TextBlock, Page } from './interfaces/structuredResource';
+import { VisualResource } from './interfaces/visualResource';
 
 interface GeneratorPaneProps {
   lessonData: Map<string, any>
@@ -46,8 +47,10 @@ export default function GeneratorPane({ lessonData, clientId, clientSecret, awsA
   const [error, setError] = useState<string | null>(null);
   const [currentGenerationId, setCurrentGenerationId] = useState<string | null>(null);
   const [isCreatingResource, setIsCreatingResource] = useState(false);
+  const [isCreatingVisualResource, setIsCreatingVisualResource] = useState(false);
   const [title, setTitle] = useState<string>('');
   const [createdResourceId, setCreatedResourceId] = useState<string | null>(null);
+  const [createdVisualResourceId, setCreatedVisualResourceId] = useState<string | null>(null);
   
   const pollingIntervalRef = useRef<number | null>(null);
   const apiRef = useRef<AiceApi | null>(null);
@@ -195,6 +198,61 @@ export default function GeneratorPane({ lessonData, clientId, clientSecret, awsA
     }
   };
 
+  const createVisualResource = async () => {
+    if (!generatedContent) return;
+
+    setIsCreatingVisualResource(true);
+    try {
+      // Convert the article content into Builder blocks
+      const paragraphs = generatedContent.body.split('\n\n').filter(p => p.trim());
+      
+      const blocks = paragraphs.map(paragraph => ({
+        '@type': '@builder.io/sdk:Element' as const,
+        component: {
+          name: 'Text',
+          options: {
+            text: `<p>${paragraph}</p>`
+          }
+        }
+      }));
+
+      // Wrap all text blocks in a container div
+      const containerBlock = {
+        '@type': '@builder.io/sdk:Element' as const,
+        tagName: 'div',
+        children: blocks
+      };
+
+      const articleName = `${title || 'Article'} - AI visual resource by ${context.user.data?.displayName || 'User'}`;
+      const slug = articleName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      
+      const createResult = await context.createContent('resource', {
+        name: articleName,
+        data: {
+          title: articleName,
+          slug: slug,
+          blocks: [containerBlock]
+        }
+      });
+
+      console.log('Visual resource created:', createResult);
+      
+      // Store the created visual resource ID
+      if (createResult.id) {
+        setCreatedVisualResourceId(createResult.id);
+      }
+      
+      // Show success message
+      alert(`Visual resource "${articleName}" created successfully!`);
+      
+    } catch (err) {
+      console.error('Error creating visual resource:', err);
+      alert(`Error creating visual resource: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsCreatingVisualResource(false);
+    }
+  };
+
   const onGenerate = async (parameters: EngineParameters) => {
     if (!clientId || !clientSecret || !awsAccessKeyId || !awsSecretAccessKey) {
       setError('Missing credentials');
@@ -207,6 +265,7 @@ export default function GeneratorPane({ lessonData, clientId, clientSecret, awsA
     setGenerationStatus('Starting generation...');
     setTitle(parameters.title);
     setCreatedResourceId(null); // Reset created resource ID for new generation
+    setCreatedVisualResourceId(null); // Reset created visual resource ID for new generation
 
     try {
       const api = new AiceApi(clientId, clientSecret);
@@ -269,8 +328,11 @@ export default function GeneratorPane({ lessonData, clientId, clientSecret, awsA
             <Preview 
               content={generatedContent} 
               onCreateResource={createStructuredResource}
+              onCreateVisualResource={createVisualResource}
               isCreatingResource={isCreatingResource}
+              isCreatingVisualResource={isCreatingVisualResource}
               createdResourceId={createdResourceId}
+              createdVisualResourceId={createdVisualResourceId}
             />
           )}
           

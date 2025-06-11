@@ -12,11 +12,22 @@ interface PreviewProps {
     }>
   }
   onCreateResource?: () => void
+  onCreateVisualResource?: () => void
   isCreatingResource?: boolean
+  isCreatingVisualResource?: boolean
   createdResourceId?: string | null
+  createdVisualResourceId?: string | null
 }
 
-export default function Preview({ content, onCreateResource, isCreatingResource, createdResourceId }: PreviewProps) {
+export default function Preview({ 
+  content, 
+  onCreateResource, 
+  onCreateVisualResource,
+  isCreatingResource, 
+  isCreatingVisualResource,
+  createdResourceId,
+  createdVisualResourceId 
+}: PreviewProps) {
   if (!content) {
     return <div>Preview</div>
   }
@@ -27,26 +38,49 @@ export default function Preview({ content, onCreateResource, isCreatingResource,
         <Typography variant="h6">
           Generated Content
         </Typography>
-        {createdResourceId ? (
-          <Button
-            variant="contained"
-            color="primary"
-            size="small"
-            onClick={() => window.open(`https://builder.io/content/${createdResourceId}`, '_blank')}
-          >
-            View created resource
-          </Button>
-        ) : onCreateResource && (
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={onCreateResource}
-            disabled={isCreatingResource}
-            size="small"
-          >
-            {isCreatingResource ? 'Creating...' : 'Create Structured Resource'}
-          </Button>
-        )}
+        <div css={{ display: 'flex', gap: 8 }}>
+          {createdResourceId ? (
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              onClick={() => window.open(`https://builder.io/content/${createdResourceId}`, '_blank')}
+            >
+              View Structured Resource
+            </Button>
+          ) : onCreateResource && (
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={onCreateResource}
+              disabled={isCreatingResource || isCreatingVisualResource}
+              size="small"
+            >
+              {isCreatingResource ? 'Creating...' : 'Create Structured Resource'}
+            </Button>
+          )}
+          
+          {createdVisualResourceId ? (
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              onClick={() => window.open(`https://builder.io/content/${createdVisualResourceId}`, '_blank')}
+            >
+              View Visual Resource
+            </Button>
+          ) : onCreateVisualResource && (
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={onCreateVisualResource}
+              disabled={isCreatingResource || isCreatingVisualResource}
+              size="small"
+            >
+              {isCreatingVisualResource ? 'Creating...' : 'Create Visual Resource'}
+            </Button>
+          )}
+        </div>
       </div>
       
       <div css={{ marginBottom: 24 }}>

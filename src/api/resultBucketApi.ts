@@ -46,11 +46,13 @@ export async function getS3Object(accessKeyId: string, secretAccessKey: string, 
   
   // Create canonical request
   const method = 'GET';
-  const canonicalUri = `/${key}`;
+  // URI encode the path, but preserve the forward slashes
+  const canonicalUri = '/' + key.split('/').map(segment => encodeURIComponent(segment)).join('/');
   const canonicalQuerystring = '';
-  const canonicalHeaders = `host:${url.hostname}\nx-amz-date:${isoDate}\n`;
-  const signedHeaders = 'host;x-amz-date';
   const payloadHash = await sha256('');
+  const payloadHashHex = toHex(payloadHash);
+  const canonicalHeaders = `host:${url.hostname}\nx-amz-content-sha256:${payloadHashHex}\nx-amz-date:${isoDate}\n`;
+  const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
   
   const canonicalRequest = [
     method,
@@ -58,7 +60,7 @@ export async function getS3Object(accessKeyId: string, secretAccessKey: string, 
     canonicalQuerystring,
     canonicalHeaders,
     signedHeaders,
-    toHex(payloadHash)
+    payloadHashHex
   ].join('\n');
   
   // Create string to sign
@@ -85,7 +87,8 @@ export async function getS3Object(accessKeyId: string, secretAccessKey: string, 
   const response = await fetch(httpsUrl, {
     headers: {
       'Authorization': authorization,
-      'x-amz-date': isoDate
+      'x-amz-date': isoDate,
+      'x-amz-content-sha256': payloadHashHex
     }
   });
   
