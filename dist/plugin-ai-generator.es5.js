@@ -395,22 +395,36 @@ function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, aws
             return;
         setIsCreatingVisualResource(true);
         try {
-            // Convert the article content into Builder blocks
+            // Split content into paragraphs and group them into pages (2 paragraphs per page)
             const paragraphs = generatedContent.body.split('\n\n').filter(p => p.trim());
-            const blocks = paragraphs.map(paragraph => ({
+            const pageList = [];
+            for (let i = 0; i < paragraphs.length; i += 2) {
+                // Combine 2 paragraphs for each page, wrap each in <p> tags
+                const pageText = paragraphs.slice(i, i + 2).map(p => `<p>${p}</p>`).join('');
+                const page = {
+                    blocks: [
+                        {
+                            '@type': '@builder.io/sdk:Element',
+                            component: {
+                                name: 'Text',
+                                options: {
+                                    text: pageText
+                                }
+                            }
+                        }
+                    ]
+                };
+                pageList.push(page);
+            }
+            // Create the ResourcePages component
+            const resourcePagesBlock = {
                 '@type': '@builder.io/sdk:Element',
                 component: {
-                    name: 'Text',
+                    name: 'ResourcePages',
                     options: {
-                        text: `<p>${paragraph}</p>`
+                        pageList: pageList
                     }
                 }
-            }));
-            // Wrap all text blocks in a container div
-            const containerBlock = {
-                '@type': '@builder.io/sdk:Element',
-                tagName: 'div',
-                children: blocks
             };
             const articleName = `${title || 'Article'} - AI visual resource by ${((_c = context.user.data) === null || _c === void 0 ? void 0 : _c.displayName) || 'User'}`;
             const slug = articleName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -419,7 +433,7 @@ function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, aws
                 data: {
                     title: articleName,
                     slug: slug,
-                    blocks: [containerBlock]
+                    blocks: [resourcePagesBlock]
                 }
             });
             console.log('Visual resource created:', createResult);
