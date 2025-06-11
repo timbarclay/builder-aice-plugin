@@ -7,6 +7,7 @@ import Preview from './Preview';
 import { AiceApi } from './api/aiceApi';
 import { getS3Object } from './api/resultBucketApi';
 import { ApplicationContext } from './interfaces/application-context';
+import { TextBlock, Page } from './interfaces/structuredResource';
 
 interface GeneratorPaneProps {
   lessonData: Map<string, any>
@@ -44,6 +45,7 @@ export default function GeneratorPane({ lessonData, clientId, clientSecret, awsA
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [currentGenerationId, setCurrentGenerationId] = useState<string | null>(null);
+  const [isCreatingResource, setIsCreatingResource] = useState(false);
   
   const pollingIntervalRef = useRef<number | null>(null);
   const apiRef = useRef<AiceApi | null>(null);
@@ -138,6 +140,54 @@ export default function GeneratorPane({ lessonData, clientId, clientSecret, awsA
     }
   }, [currentGenerationId, userContentId]);
 
+  const createStructuredResource = async () => {
+    if (!generatedContent) return;
+
+    setIsCreatingResource(true);
+    try {
+      // Split content by paragraphs and group into pages with 2 paragraphs each
+      const paragraphs = generatedContent.body.split('\n\n').filter(p => p.trim());
+      const pages: Page[] = [];
+      
+      for (let i = 0; i < paragraphs.length; i += 2) {
+        const textContent = paragraphs.slice(i, i + 2).join('\n\n');
+        const textBlock: TextBlock = {
+          type: 'Text',
+          text: textContent
+        };
+        pages.push({
+          blocks: [textBlock]
+        });
+      }
+
+      // For now, we'll assume the Article resource type ID. 
+      // In a real implementation, you would query for the Article resource type first
+      const lessonName = lessonData.get('name') || 'Generated Article';
+      const slug = lessonName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      
+      const createResult = await context.createContent('resource-structured', {
+        name: lessonName,
+        data: {
+          name: lessonName,
+          slug: slug,
+          //type: 'article-resource-type-id', // This should be the actual ID of the Article resource type
+          pages: pages
+        }
+      });
+
+      console.log('Structured resource created:', createResult);
+      
+      // Optionally navigate to the new resource or show success message
+      alert(`Structured resource "${lessonName}" created successfully!`);
+      
+    } catch (err) {
+      console.error('Error creating structured resource:', err);
+      alert(`Error creating structured resource: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsCreatingResource(false);
+    }
+  };
+
   const onGenerate = async (parameters: EngineParameters) => {
     if (!clientId || !clientSecret || !awsAccessKeyId || !awsSecretAccessKey) {
       setError('Missing credentials');
@@ -207,7 +257,11 @@ export default function GeneratorPane({ lessonData, clientId, clientSecret, awsA
           )}
           
           {generatedContent && !isGenerating && (
-            <Preview content={generatedContent} />
+            <Preview 
+              content={generatedContent} 
+              onCreateResource={createStructuredResource}
+              isCreatingResource={isCreatingResource}
+            />
           )}
           
           {!isGenerating && !generatedContent && !error && (

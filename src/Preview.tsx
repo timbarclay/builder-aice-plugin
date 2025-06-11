@@ -1,7 +1,7 @@
 /** @jsx jsx */
 import React from 'react';
 import { jsx } from '@emotion/core';
-import { Typography, Paper, Divider } from '@material-ui/core';
+import { Typography, Paper, Divider, Button } from '@material-ui/core';
 
 interface PreviewProps {
   content?: {
@@ -11,18 +11,33 @@ interface PreviewProps {
       answer: string
     }>
   }
+  onCreateResource?: () => void
+  isCreatingResource?: boolean
 }
 
-export default function Preview({ content }: PreviewProps) {
+export default function Preview({ content, onCreateResource, isCreatingResource }: PreviewProps) {
   if (!content) {
     return <div>Preview</div>
   }
 
   return (
     <Paper css={{ padding: 24, height: '100%', overflow: 'auto' }}>
-      <Typography variant="h6" css={{ marginBottom: 16 }}>
-        Generated Content
-      </Typography>
+      <div css={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <Typography variant="h6">
+          Generated Content
+        </Typography>
+        {onCreateResource && (
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={onCreateResource}
+            disabled={isCreatingResource}
+            size="small"
+          >
+            {isCreatingResource ? 'Creating...' : 'Create Structured Resource'}
+          </Button>
+        )}
+      </div>
       
       <div css={{ marginBottom: 24 }}>
         <Typography variant="subtitle2" css={{ marginBottom: 8, fontWeight: 'bold' }}>

@@ -66,12 +66,14 @@ function GeneratorForm({ lessonData, disabled, onGenerate }) {
         jsx(Button, { variant: "contained", color: "primary", fullWidth: true, size: "large", onClick: handleGenerate, disabled: disabled }, "Generate Content")));
 }
 
-function Preview({ content }) {
+function Preview({ content, onCreateResource, isCreatingResource }) {
     if (!content) {
         return jsx("div", null, "Preview");
     }
     return (jsx(Paper, { css: { padding: 24, height: '100%', overflow: 'auto' } },
-        jsx(Typography, { variant: "h6", css: { marginBottom: 16 } }, "Generated Content"),
+        jsx("div", { css: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 } },
+            jsx(Typography, { variant: "h6" }, "Generated Content"),
+            onCreateResource && (jsx(Button, { variant: "contained", color: "secondary", onClick: onCreateResource, disabled: isCreatingResource, size: "small" }, isCreatingResource ? 'Creating...' : 'Create Structured Resource'))),
         jsx("div", { css: { marginBottom: 24 } },
             jsx(Typography, { variant: "subtitle2", css: { marginBottom: 8, fontWeight: 'bold' } }, "Article:"),
             jsx(Typography, { variant: "body2", css: { whiteSpace: 'pre-wrap', lineHeight: 1.6 } }, content.body)),
@@ -231,6 +233,7 @@ function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, aws
     const [generatedContent, setGeneratedContent] = useState(null);
     const [error, setError] = useState(null);
     const [currentGenerationId, setCurrentGenerationId] = useState(null);
+    const [isCreatingResource, setIsCreatingResource] = useState(false);
     const pollingIntervalRef = useRef(null);
     const apiRef = useRef(null);
     const startPolling = (api, generationId) => {
@@ -313,6 +316,48 @@ function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, aws
             context.user.organization.save();
         }
     }, [currentGenerationId, userContentId]);
+    const createStructuredResource = () => __awaiter(this, void 0, void 0, function* () {
+        if (!generatedContent)
+            return;
+        setIsCreatingResource(true);
+        try {
+            // Split content by paragraphs and group into pages with 2 paragraphs each
+            const paragraphs = generatedContent.body.split('\n\n').filter(p => p.trim());
+            const pages = [];
+            for (let i = 0; i < paragraphs.length; i += 2) {
+                const textContent = paragraphs.slice(i, i + 2).join('\n\n');
+                const textBlock = {
+                    type: 'Text',
+                    text: textContent
+                };
+                pages.push({
+                    blocks: [textBlock]
+                });
+            }
+            // For now, we'll assume the Article resource type ID. 
+            // In a real implementation, you would query for the Article resource type first
+            const lessonName = lessonData.get('name') || 'Generated Article';
+            const slug = lessonName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+            const createResult = yield context.createContent('resource-structured', {
+                data: {
+                    name: lessonName,
+                    slug: slug,
+                    //type: 'article-resource-type-id', // This should be the actual ID of the Article resource type
+                    pages: pages
+                }
+            });
+            console.log('Structured resource created:', createResult);
+            // Optionally navigate to the new resource or show success message
+            alert(`Structured resource "${lessonName}" created successfully!`);
+        }
+        catch (err) {
+            console.error('Error creating structured resource:', err);
+            alert(`Error creating structured resource: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        }
+        finally {
+            setIsCreatingResource(false);
+        }
+    });
     const onGenerate = (parameters) => __awaiter(this, void 0, void 0, function* () {
         if (!clientId || !clientSecret || !awsAccessKeyId || !awsSecretAccessKey) {
             setError('Missing credentials');
@@ -352,7 +397,7 @@ function GeneratorPane({ lessonData, clientId, clientSecret, awsAccessKeyId, aws
                     jsx(Typography, { variant: "body2", color: "error" },
                         "Error: ",
                         error))),
-                generatedContent && !isGenerating && (jsx(Preview, { content: generatedContent })),
+                generatedContent && !isGenerating && (jsx(Preview, { content: generatedContent, onCreateResource: createStructuredResource, isCreatingResource: isCreatingResource })),
                 !isGenerating && !generatedContent && !error && (jsx("div", { css: {
                         display: 'flex',
                         alignItems: 'center',
