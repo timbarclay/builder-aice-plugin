@@ -99,8 +99,8 @@ System.register(['react', '@emotion/core', '@builder.io/sdk', '@material-ui/core
                     jsx("div", { css: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 } },
                         jsx(Typography, { variant: "h6" }, "Generated Content"),
                         jsx("div", { css: { display: 'flex', gap: 8 } },
-                            createdResourceId ? (jsx(Button, { variant: "contained", color: "primary", size: "small", onClick: () => window.open(`https://builder.io/content/${createdResourceId}`, '_blank') }, "View Structured Resource")) : onCreateResource && (jsx(Button, { variant: "contained", color: "secondary", onClick: onCreateResource, disabled: isCreatingResource || isCreatingVisualResource, size: "small" }, isCreatingResource ? 'Creating...' : 'Create Structured Resource')),
-                            createdVisualResourceId ? (jsx(Button, { variant: "contained", color: "primary", size: "small", onClick: () => window.open(`https://builder.io/content/${createdVisualResourceId}`, '_blank') }, "View Visual Resource")) : onCreateVisualResource && (jsx(Button, { variant: "outlined", color: "primary", onClick: onCreateVisualResource, disabled: isCreatingResource || isCreatingVisualResource, size: "small" }, isCreatingVisualResource ? 'Creating...' : 'Create Visual Resource')))),
+                            createdResourceId ? (jsx(Button, { variant: "contained", color: "secondary", size: "small", onClick: () => window.open(`https://builder.io/content/${createdResourceId}`, '_blank') }, "View Structured Resource")) : onCreateResource && (jsx(Button, { variant: "contained", color: "primary", onClick: onCreateResource, disabled: isCreatingResource || isCreatingVisualResource, size: "small" }, isCreatingResource ? 'Creating...' : 'Create Structured Resource')),
+                            createdVisualResourceId ? (jsx(Button, { variant: "contained", color: "secondary", size: "small", onClick: () => window.open(`https://builder.io/content/${createdVisualResourceId}`, '_blank') }, "View Visual Resource")) : onCreateVisualResource && (jsx(Button, { variant: "outlined", color: "primary", onClick: onCreateVisualResource, disabled: isCreatingResource || isCreatingVisualResource, size: "small" }, isCreatingVisualResource ? 'Creating...' : 'Create Visual Resource')))),
                     jsx("div", { css: { marginBottom: 24 } },
                         jsx(Typography, { variant: "subtitle2", css: { marginBottom: 8, fontWeight: 'bold' } }, "Article:"),
                         jsx(Typography, { variant: "body2", css: { whiteSpace: 'pre-wrap', lineHeight: 1.6 } }, content.body)),
@@ -395,7 +395,8 @@ System.register(['react', '@emotion/core', '@builder.io/sdk', '@material-ui/core
                             data: {
                                 name: articleName,
                                 slug: slug,
-                                pages: pages
+                                pages: pages,
+                                generatedByAi: true
                             }
                         });
                         console.log('Structured resource created:', createResult);
@@ -458,7 +459,8 @@ System.register(['react', '@emotion/core', '@builder.io/sdk', '@material-ui/core
                             data: {
                                 title: articleName,
                                 slug: slug,
-                                blocks: [resourcePagesBlock]
+                                blocks: [resourcePagesBlock],
+                                generatedByAi: true
                             }
                         });
                         console.log('Visual resource created:', createResult);

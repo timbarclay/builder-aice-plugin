@@ -74,8 +74,8 @@
             core.jsx("div", { css: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 } },
                 core.jsx(core$1.Typography, { variant: "h6" }, "Generated Content"),
                 core.jsx("div", { css: { display: 'flex', gap: 8 } },
-                    createdResourceId ? (core.jsx(core$1.Button, { variant: "contained", color: "primary", size: "small", onClick: () => window.open(`https://builder.io/content/${createdResourceId}`, '_blank') }, "View Structured Resource")) : onCreateResource && (core.jsx(core$1.Button, { variant: "contained", color: "secondary", onClick: onCreateResource, disabled: isCreatingResource || isCreatingVisualResource, size: "small" }, isCreatingResource ? 'Creating...' : 'Create Structured Resource')),
-                    createdVisualResourceId ? (core.jsx(core$1.Button, { variant: "contained", color: "primary", size: "small", onClick: () => window.open(`https://builder.io/content/${createdVisualResourceId}`, '_blank') }, "View Visual Resource")) : onCreateVisualResource && (core.jsx(core$1.Button, { variant: "outlined", color: "primary", onClick: onCreateVisualResource, disabled: isCreatingResource || isCreatingVisualResource, size: "small" }, isCreatingVisualResource ? 'Creating...' : 'Create Visual Resource')))),
+                    createdResourceId ? (core.jsx(core$1.Button, { variant: "contained", color: "secondary", size: "small", onClick: () => window.open(`https://builder.io/content/${createdResourceId}`, '_blank') }, "View Structured Resource")) : onCreateResource && (core.jsx(core$1.Button, { variant: "contained", color: "primary", onClick: onCreateResource, disabled: isCreatingResource || isCreatingVisualResource, size: "small" }, isCreatingResource ? 'Creating...' : 'Create Structured Resource')),
+                    createdVisualResourceId ? (core.jsx(core$1.Button, { variant: "contained", color: "secondary", size: "small", onClick: () => window.open(`https://builder.io/content/${createdVisualResourceId}`, '_blank') }, "View Visual Resource")) : onCreateVisualResource && (core.jsx(core$1.Button, { variant: "outlined", color: "primary", onClick: onCreateVisualResource, disabled: isCreatingResource || isCreatingVisualResource, size: "small" }, isCreatingVisualResource ? 'Creating...' : 'Create Visual Resource')))),
             core.jsx("div", { css: { marginBottom: 24 } },
                 core.jsx(core$1.Typography, { variant: "subtitle2", css: { marginBottom: 8, fontWeight: 'bold' } }, "Article:"),
                 core.jsx(core$1.Typography, { variant: "body2", css: { whiteSpace: 'pre-wrap', lineHeight: 1.6 } }, content.body)),
@@ -370,7 +370,8 @@
                     data: {
                         name: articleName,
                         slug: slug,
-                        pages: pages
+                        pages: pages,
+                        generatedByAi: true
                     }
                 });
                 console.log('Structured resource created:', createResult);
@@ -433,7 +434,8 @@
                     data: {
                         title: articleName,
                         slug: slug,
-                        blocks: [resourcePagesBlock]
+                        blocks: [resourcePagesBlock],
+                        generatedByAi: true
                     }
                 });
                 console.log('Visual resource created:', createResult);

@@ -32,6 +32,7 @@ function hmac(key, message) {
 }
 function getS3Object(accessKeyId, secretAccessKey, s3Uri) {
     return __awaiter(this, void 0, void 0, function* () {
+        //return Promise.resolve(mock)
         // Convert s3://bucket/key to https://bucket.s3.region.amazonaws.com/key
         const match = s3Uri.match(/^s3:\/\/([^\/]+)\/(.+)$/);
         if (!match) {
@@ -48,18 +49,20 @@ function getS3Object(accessKeyId, secretAccessKey, s3Uri) {
         const dateStamp = isoDate.slice(0, 8);
         // Create canonical request
         const method = 'GET';
-        const canonicalUri = `/${key}`;
+        // URI encode the path, but preserve the forward slashes
+        const canonicalUri = '/' + key.split('/').map(segment => encodeURIComponent(segment)).join('/');
         const canonicalQuerystring = '';
-        const canonicalHeaders = `host:${url.hostname}\nx-amz-date:${isoDate}\n`;
-        const signedHeaders = 'host;x-amz-date';
         const payloadHash = yield sha256('');
+        const payloadHashHex = toHex(payloadHash);
+        const canonicalHeaders = `host:${url.hostname}\nx-amz-content-sha256:${payloadHashHex}\nx-amz-date:${isoDate}\n`;
+        const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
         const canonicalRequest = [
             method,
             canonicalUri,
             canonicalQuerystring,
             canonicalHeaders,
             signedHeaders,
-            toHex(payloadHash)
+            payloadHashHex
         ].join('\n');
         // Create string to sign
         const algorithm = 'AWS4-HMAC-SHA256';
@@ -82,7 +85,8 @@ function getS3Object(accessKeyId, secretAccessKey, s3Uri) {
         const response = yield fetch(httpsUrl, {
             headers: {
                 'Authorization': authorization,
-                'x-amz-date': isoDate
+                'x-amz-date': isoDate,
+                'x-amz-content-sha256': payloadHashHex
             }
         });
         if (!response.ok) {
