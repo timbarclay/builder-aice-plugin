@@ -176,7 +176,8 @@ export default function GeneratorPane({ lessonData, clientId, clientSecret, awsA
         data: {
           name: articleName,
           slug: slug,
-          pages: pages
+          pages: pages,
+          generatedByAi: true
         }
       });
 
@@ -247,7 +248,8 @@ export default function GeneratorPane({ lessonData, clientId, clientSecret, awsA
         data: {
           title: articleName,
           slug: slug,
-          blocks: [resourcePagesBlock]
+          blocks: [resourcePagesBlock],
+          generatedByAi: true
         }
       });
 

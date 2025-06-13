@@ -72,7 +72,7 @@ export default function Preview({
           ) : onCreateVisualResource && (
             <Button
               variant="outlined"
-              color="secondary"
+              color="primary"
               onClick={onCreateVisualResource}
               disabled={isCreatingResource || isCreatingVisualResource}
               size="small"
