@@ -42,7 +42,7 @@ export default function Preview({
           {createdResourceId ? (
             <Button
               variant="contained"
-              color="primary"
+              color="secondary"
               size="small"
               onClick={() => window.open(`https://builder.io/content/${createdResourceId}`, '_blank')}
             >
@@ -51,7 +51,7 @@ export default function Preview({
           ) : onCreateResource && (
             <Button
               variant="contained"
-              color="secondary"
+              color="primary"
               onClick={onCreateResource}
               disabled={isCreatingResource || isCreatingVisualResource}
               size="small"
@@ -63,7 +63,7 @@ export default function Preview({
           {createdVisualResourceId ? (
             <Button
               variant="contained"
-              color="primary"
+              color="secondary"
               size="small"
               onClick={() => window.open(`https://builder.io/content/${createdVisualResourceId}`, '_blank')}
             >
