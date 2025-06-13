@@ -19,4 +19,4 @@ To deploy a new version
     git commit -m "<message>"
     git push
 
-In builder, add a cdn URL for the `plugin-ai-generator.system.js` file, e.g. `https://cdn.jsdelivr.net/gh/timbarclay/builder-ai-generator-plugin/dist/plugin-ai-generator.system.js?pluginId=plugin-ai-generator`.
+In builder, add a cdn URL for the `plugin-ai-generator.system.js` file, e.g. `https://cdn.jsdelivr.net/gh/timbarclay/builder-aice-plugin/dist/plugin-ai-generator.system.js?pluginId=plugin-ai-generator`.
